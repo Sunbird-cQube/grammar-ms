@@ -1,0 +1,112 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["spec", "dimensions", "transformers", "datasets"]
+}
+
+model InstrumentType {
+  type         String         @id @default(cuid())
+  name         String         @unique
+  description  String?
+  EventGrammar EventGrammar[]
+
+  @@schema("spec")
+}
+
+model DimensionGrammar {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  schema      Json
+  type        String
+  storage     Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@schema("spec")
+}
+
+model DatasetGrammar {
+  id               Int           @id @default(autoincrement())
+  name             String        @unique
+  description      String?
+  dimensions       Json
+  timeDimension    Json?
+  schema           Json
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+  Pipe             Pipe[]
+  program          String?
+  isCompound       Boolean       @default(false)
+  eventGrammarFile String?
+  eventGrammar     EventGrammar? @relation(fields: [eventGrammarId], references: [id])
+  eventGrammarId   Int?
+
+  @@schema("spec")
+}
+
+model EventGrammar {
+  id               Int              @id @default(autoincrement())
+  name             String           @unique
+  instrument       InstrumentType   @relation(fields: [instrumentType], references: [type])
+  schema           Json
+  dimensionMapping Json
+  instrumentField  String
+  isActive         Boolean          @default(true)
+  description      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+  instrumentType   String
+  Pipe             Pipe[]
+  program          String?
+  file             String?
+  eventType        EventType        @default(INTERNAL)
+  DatasetGrammar   DatasetGrammar[]
+
+  @@schema("spec")
+}
+
+enum EventType {
+  INTERNAL
+  EXTERNAL
+
+  @@schema("spec")
+}
+
+model Transformer {
+  id                 Int       @id @default(autoincrement())
+  name               String    @unique
+  suggestiveEvents   String[]
+  suggestiveDatasets String[]
+  transformSync      String
+  transformAsync     String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+  Pipe               Pipe[]
+
+  @@schema("transformers")
+}
+
+model Pipe {
+  id               Int            @id @default(autoincrement())
+  transformer      Transformer    @relation(fields: [transformerId], references: [id])
+  event            EventGrammar   @relation(fields: [eventGrammarId], references: [id])
+  dataset          DatasetGrammar @relation(fields: [datasetGrammarId], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deletedAt        DateTime?
+  transformerId    Int
+  eventGrammarId   Int
+  datasetGrammarId Int
+
+  @@schema("transformers")
+}
